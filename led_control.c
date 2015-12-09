@@ -31,6 +31,9 @@
 #define serial_pin_in (1<<PB1)
 #define serial_pin_out (1<<PB2)
 #define led0 (1 << PA3)
+#define led1 (1 << PA2)
+#define led2 (1 << PA1)
+#define led3 (1 << PA0)
 
 
 void get_char(volatile unsigned char *pins, unsigned char pin, char *rxbyte){
@@ -166,10 +169,22 @@ void put_char(volatile unsigned char *port, unsigned char pin, char txchar){
 
 }
 
+void leds_off(){
+  low(led_port,led0);
+  low(led_port,led1);
+  low(led_port,led2);
+  low(led_port,led3);
+}
+
+void leds_on(){
+  high(led_port,led0);
+  high(led_port,led1);
+  high(led_port,led2);
+  high(led_port,led3);
+}
 
 int main(void){
   static char chr;
-  //char is_light = '0';
 
   CLKPR = (1 << CLKPCE);
   CLKPR = (0 << CLKPS3) | (0 << CLKPS2) | (0 << CLKPS1) | (0 << CLKPS0);
@@ -178,20 +193,20 @@ int main(void){
   high(serial_port,serial_pin_out);
   output(serial_direction,serial_pin_out);
 
-  high(led_port,led0);
+  // initialize leds
   output(led_direction,led0);
+  output(led_direction,led1);
+  output(led_direction,led2);
+  output(led_direction,led3);
 
   while(1){
     get_char(&serial_pins,serial_pin_in,&chr);
 
-    if(chr == '0'){
-      low(led_port,led0);
-      //is_light = '0';
-    }else{
-      high(led_port,led0);
-      //is_light = '1';
-    }
+    if(chr == '0')
+      leds_off();
+    else
+      leds_on();
+
     put_char(&serial_port,serial_pin_out,chr);
-    //put_char(&serial_port,serial_pin_out,is_light);
   }
 }
