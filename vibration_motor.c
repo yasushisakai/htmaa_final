@@ -15,7 +15,7 @@
 #define bit_test(byte,bit) (byte & (1 << bit))
 
 // delays
-#define bit_delay_time 101 //
+#define bit_delay_time 100 //
 #define bit_delay() _delay_us(bit_delay_time)
 #define half_bit_delay() _delay_us(bit_delay_time/2)
 
@@ -205,27 +205,8 @@ int main(void){
 	output(serial_direction,led_serial_out);
 	static char chr;
 	frame = 0;
-	put_char(&serial_port,led_serial_out,'*');
-	while(1){
-		put_char(&serial_port,led_serial_out,frame);
-		for(cycle=0;cycle < cycle_count;++cycle){
-			for(count = 0;count<PWM_count;++count){
-				high(motor_port,motor1);
-				PWM_on_delay();
-				low(motor_port,motor1);
-				PWM_off_delay_fast();
-			}
-		}
-		for(cycle=0;cycle<cycle_count;++cycle){
-			for(count = 0;count<PWM_count;++count){
-				high(motor_port,motor1);
-				PWM_on_delay();
-				low(motor_port,motor1);
-				PWM_off_delay_fast();
-			}
-		}
 
-		++frame;
-	}
+	// just make it high
+	low(motor_port,motor1);
 
 }
