@@ -35,8 +35,8 @@
 
 // pins
 // motors
-#define motor1 (1<<PB2)
-#define motor2 (1<<PB1)
+#define motor1 (1<<PB1)
+#define motor2 (1<<PB2)
 
 //serial communication
 #define mic_serial_in (1<<PA3)
@@ -177,6 +177,14 @@ void put_char(volatile unsigned char *port, unsigned char pin, char txchar){
 
 }
 
+void motor_run(unsigned char motor_pin){
+  high(motor_port,motor_pin);
+}
+
+void motor_stop(unsigned char motor_pin){
+  low(motor_port,motor_pin);
+}
+
 int main(void){
 
 	// set clock
@@ -186,27 +194,21 @@ int main(void){
 	//set motors for output
 	low(motor_port,motor1);
 	output(motor_direction,motor1);
+	low(motor_port,motor2);
+	output(motor_direction,motor2);
 
-	// counters
-	static uint16_t count;
-	static uint8_t cycle;
-	static uint16_t frame;
-
-	// while(1){
-	// 		for(count=0;count<PWM_count;++count){
-	// 			high(motor_port,motor1);
-	// 			PWM_on_delay();
-	// 			low(motor_port,motor1);
-	// 			PWM_off_delay();
-	// 		}
-	// }
-
-	// put_get char example
-	output(serial_direction,led_serial_out);
-	static char chr;
-	frame = 0;
-
-	// just make it high
-	low(motor_port,motor1);
+  int i;
+  for (i=0;i<10;++i){
+    if(i%2==0){
+      motor_run(motor1);
+      motor_stop(motor2);
+    }else{
+      motor_stop(motor1);
+      motor_run(motor2);
+    }
+    _delay_ms(1000);
+  }
+  motor_stop(motor1);
+  motor_stop(motor2);
 
 }
