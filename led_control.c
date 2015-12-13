@@ -199,13 +199,31 @@ int main(void){
   output(led_direction,led2);
   output(led_direction,led3);
 
+  leds_on();
+
   while(1){
     get_char(&serial_pins,serial_pin_in,&chr);
 
-    if(chr == '0')
-      leds_off();
-    else
-      leds_on();
+    switch(chr){
+      case '0':
+        leds_off();
+        break;
+      case '1':
+        leds_on();
+        break;
+      case '2':
+        leds_off();
+        high(led_port,led1);
+        high(led_port,led2);
+        break;
+      case '3':
+        leds_off();
+        high(led_port,led0);
+        high(led_port,led3);
+        break;
+      default:
+        leds_off();
+    }
 
     put_char(&serial_port,serial_pin_out,chr);
   }
