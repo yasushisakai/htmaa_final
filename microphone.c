@@ -15,35 +15,23 @@
 #define bit_test(byte,bit) (byte & (1 << bit))
 
 // delays
-#define bit_delay_time 100 //
+#define bit_delay_time 102 //
 #define bit_delay() _delay_us(bit_delay_time)
 #define half_bit_delay() _delay_us(bit_delay_time/2)
-
-#define PWM_on_delay() _delay_us(5500) //
-#define PWM_off_delay_slow() _delay_us(2500) // slow
-#define PWM_off_delay_fast() _delay_ms(1) // fast
-#define PWM_unit_delay() _delay_us(10)
-
-#define PWM_cycle 50  // 8 milliseconds * 50cycles = 400milliseconds
-#define cycle_count 8 //??
+#define char_delay() _delay_ms(10)
 
 // ports
-#define serial_port PORTA
-#define serial_direction DDRA
-#define serial_pins PINA
-#define motor_port PORTB
-#define motor_direction DDRB
+#define serial_port PORTB
+#define serial_direction DDRB
+#define led_port PORTA
+#define led_direction DDRA
+#define sample_time 10
+
 
 // pins
-// motors
-#define motor1 (1<<PB1)
-#define motor2 (1<<PB2)
+#define serial_pin_out (1<<PB2)
+//#define sensor_pin_in (1<<PA7)
 
-//serial communication
-#define mic_serial_in (1<<PA3)
-#define mic_serial_out (1<<PA2)
-#define led_serial_in (1<<PA1)
-#define led_serial_out (1<<PA0)
 
 void get_char(volatile unsigned char *pins, unsigned char pin, char *rxbyte){
 
@@ -178,73 +166,66 @@ void put_char(volatile unsigned char *port, unsigned char pin, char txchar){
 
 }
 
-void motor_on(unsigned char motor_pin){
-  high(motor_port,motor_pin);
-}
-
-void motor_off(unsigned char motor_pin){
-  low(motor_port,motor_pin);
-}
-
-void motor_run(uint8_t strength){
-  // this will last for 10ms
-  uint8_t cycle;
-  uint8_t loop;
-  for(cycle = 0; cycle < PWM_cycle; ++cycle){
-    high(motor_port,motor1);
-    high(motor_port,motor2);
-    for(loop = 0;loop<strength;++loop)
-      _delay_us(10);
-    low(motor_port,motor1);
-    low(motor_port,motor2);
-    for(loop = 0;loop<(100-strength);++loop)
-      _delay_us(10);
-  }
-}
-
 int main(void){
 
-	// set clock
-	CLKPR = (1 << CLKPCE);
-	CLKPR = (0 << CLKPS3) | (0 << CLKPS2) | (0 << CLKPS1) | (0 << CLKPS0);
+  static unsigned char i,highs[sample_time],lows[sample_time];
+  unsigned int readings[sample_time];
+  float baseline;
+  uint16_t min,max,temp,mid;
 
-  //serial
-  high(serial_port,led_serial_out);
-  output(serial_direction,led_serial_out);
-  high(serial_port,mic_serial_out);
-  output(serial_direction,mic_serial_out);
-  high(serial_port,mic_serial_in);
-  input(serial_direction,mic_serial_in);
+  //set clock
+  CLKPR = (1 << CLKPCE);
+  CLKPR = (0 << CLKPS3) | (0 << CLKPS2) | (0 << CLKPS1) | (0 << CLKPS0);
 
-	//set motors for output
-	low(motor_port,motor1);
-	output(motor_direction,motor1);
-	low(motor_port,motor2);
-	output(motor_direction,motor2);
+  //initialize output pins
+  high(serial_port,serial_pin_out);
+  output(serial_direction,serial_pin_out);
 
-  put_char(&serial_port,led_serial_out,'0');
+  //initialize analog to digital converter
+  ADMUX = (1<<REFS1) | (0<<REFS0) | (0<<MUX5) | (0<<MUX4) | (0<<MUX3) | (1<<MUX2) | (1<<MUX1) | (1<<MUX0);
 
-  uint8_t loop;
-  char chr;
+  ADCSRA = (1<<ADEN) | (1<<ADPS2) | (1<<ADPS1) | (0<<ADPS0);
+
+  baseline = 0.0f;
+
   while(1){
+    put_char(&serial_port,serial_pin_out,'1');
+    char_delay();
+    put_char(&serial_port,serial_pin_out,'2');
+    char_delay();
+    put_char(&serial_port,serial_pin_out,'3');
+    char_delay();
+    put_char(&serial_port,serial_pin_out,'4');
+    char_delay();
 
-    motor_on(motor1);
-    motor_on(motor2);
-    get_char(&serial_pins,mic_serial_in,&chr);
-    //put_char(&serial_port,led_serial_out,chr);
-    uint8_t strength = (uint8_t)(chr-'0');
-    for(loop = 0;loop < 10;++loop){
-      motor_run(strength*10);
-      if(chr > '0'-1 && chr < '0'+2){
-        put_char(&serial_port,led_serial_out,'1');
-      }else if(chr > '0'+1 && chr < '0'+5){
-        put_char(&serial_port,led_serial_out,'2');
-      }else if(chr > '0'+4 && chr <'0'+8){
-        put_char(&serial_port,led_serial_out,'3');
-      }else{
-        put_char(&serial_port,led_serial_out,'0');
-      }
+    max = 0;
+    min = 65535;
+
+    for(i=0;i<sample_time;++i){
+
+      // start conversation
+      ADCSRA |= (1<ADSC);
+      while(ADCSRA & (1<<ADSC))
+        ;
+      temp = ADCH*256+ADCL;
+      if (temp>max) max = temp;
+      if (temp<min) min = temp;
+
+      highs[i] = ADCH;
+      lows[i] = ADCL;
+      readings[i] = ADCH*256
     }
-    //put_char(&serial_port,led_serial_out,10);//new line
+
+    mid = (max+min)/2;
+
+    for(i=0;i<sample_time;++i){
+      put_char(&serial_port,serial_pin_out,lows[i]+'0');
+      put_char(&serial_port,serial_pin_out,highs[i]+'0');
+    }
+
+    _delay_ms(1000); //1sec
+
+
   }
+
 }
