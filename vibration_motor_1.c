@@ -37,8 +37,8 @@
 
 // pins
 // motors
-#define motor1 (1<<PB1)
-#define motor2 (1<<PB2)
+#define motor1 (1<<PB2)
+#define motor2 (1<<PB1)
 
 //serial communication
 #define mic_serial_in (1<<PA3)
@@ -197,6 +197,11 @@ int main(void){
   unsigned int mic_value;
   char str_value[10];
   b4 = 0;
+  // set motor pins
+  low(motor_port,motor1);
+  output(motor_direction,motor1);
+  low(motor_port,motor2);
+  output(motor_direction,motor2);
 
   // set serial pins
   high(serial_port,led_serial_out);
@@ -205,6 +210,9 @@ int main(void){
   input(serial_direction,mic_serial_in);
 
   while(1){
+
+      high(motor_port,motor1);
+      high(motor_port,motor2);
 
       // wait for frame
       while(1){
