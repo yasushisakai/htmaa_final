@@ -197,7 +197,8 @@ int main(void){
   unsigned int mic_value;
   char str_value[10];
   b4 = 0;
-  // set motor pins
+
+  //set motor pins
   low(motor_port,motor1);
   output(motor_direction,motor1);
   low(motor_port,motor2);
@@ -211,9 +212,7 @@ int main(void){
 
   while(1){
 
-      high(motor_port,motor1);
-      high(motor_port,motor2);
-
+      
       // wait for frame
       while(1){
       b1 = b2;
@@ -237,15 +236,24 @@ int main(void){
 
       if(mic_value < 10){
         put_char(&serial_port,led_serial_out,'0');
+        high(motor_port,motor1);
+        high(motor_port,motor2);
       }else if (mic_value < 50){
         put_char(&serial_port,led_serial_out,'2');
+        low(motor_port,motor1);
+        low(motor_port,motor2);
       }else if (mic_value < 200){
         put_char(&serial_port,led_serial_out,'3');
+        low(motor_port,motor1);
+        low(motor_port,motor2);
       }else{
         put_char(&serial_port,led_serial_out,'1');
+        low(motor_port,motor1);
+        low(motor_port,motor2);
       }
 
 
+        _delay_ms(50);
       //put_char(&serial_port,led_serial_out,lo);
       //put_char(&serial_port,led_serial_out,hi);
   }

@@ -1,4 +1,4 @@
-PROJECT=vibration_motor
+PROJECT=vibration_motor_1
 SOURCES=$(PROJECT).c
 MMCU=attiny44
 F_CPU = 8000000
