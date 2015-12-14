@@ -22,6 +22,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define output(directions,pin) (directions |= pin) // set port direction for output
 #define set(port,pin) (port |= pin) // set port pin
@@ -105,7 +106,7 @@ void put_string(volatile unsigned char *port,unsigned char pin, char *str){
   int i=0;
   do{
     put_char(port,pin,str[i]);
-  } while(str[++i] != 0);
+  }while(str[++i]!=0);
 }
 
 int main(void) {
@@ -113,8 +114,12 @@ int main(void) {
    // main
    //
    static unsigned char i,array_lo[NPTS],array_hi[NPTS];
-   unsigned int results[NPTS];
-   char str[15];
+   unsigned int result,min,max;
+   unsigned int base=0;
+   unsigned int dif_mean=0;
+   unsigned int base_filt = 1;
+   char result_string[10];
+   unsigned long total_diff = 0;
    //
    // set clock divider to /1
    //
@@ -128,26 +133,33 @@ int main(void) {
    //
    // init A/D
    //
+   //ADMUX = (0 << REFS2) | (1 << REFS1) | (0 << REFS0) | (0 << MUX3) | (0 << MUX2) | (1 << MUX1) | (0 << MUX0); // PB4
 
-   ADMUX = (1 << REFS1) | (0 << REFS0) | (0 << MUX5) | (0 << MUX4) | (0 << MUX3)  | (1 << MUX2)  | (1 << MUX1)  | (1 << MUX0);
+   //ADMUX = (1 << REFS1) | (0 << REFS0) | (0 << MUX3) | (1 << MUX2) | (1 << MUX1) | (1 << MUX0);
+
+   ADMUX = (1 << REFS1) | (0 << REFS0) | (0 << MUX5) | (0 << MUX4) | (0 << MUX3)  | (1 << MUX2)  | (1 << MUX1)  | (0 << MUX0);
    ADCSRA = (1 << ADEN) // enable
       | (1 << ADPS2) | (1 << ADPS1) | (0 << ADPS0); // prescaler /64
-    put_string(&serial_port,serial_pin_out,"hello");
+
+      put_string(&serial_port,serial_pin_out,"hello");
    //
    // main loop
    //
    while (1) {
+     max = 0;
+     min = 65535;
+     //put_string(&serial_port,serial_pin_out,"**loop**");
       //
       // send framing
       //
-      put_char(&serial_port, serial_pin_out, '1');
-      char_delay();
-      put_char(&serial_port, serial_pin_out, '2');
-      char_delay();
-      put_char(&serial_port, serial_pin_out, '3');
-      char_delay();
-      put_char(&serial_port, serial_pin_out, '4');
-      char_delay();
+      // put_char(&serial_port, serial_pin_out, 1);
+      // char_delay();
+      // put_char(&serial_port, serial_pin_out, 2);
+      // char_delay();
+      // put_char(&serial_port, serial_pin_out, 3);
+      // char_delay();
+      // put_char(&serial_port, serial_pin_out, 4);
+      // char_delay();
       //
       // free-running sample loop
       //
@@ -166,21 +178,31 @@ int main(void) {
          //
          array_lo[i] = ADCL;
          array_hi[i] = ADCH;
-
-         results[i] = ADCH*255+ADCL;
-
+         //results[i] = ADCL + ADCH*255;
          }
+         dif_mean = 0;
       for (i = 0; i < NPTS; ++i) {
          //
          // send result
          //
-         put_char(&serial_port, serial_pin_out, array_lo[i]+48);
-         put_char(&serial_port,serial_pin_out,44);
-         put_char(&serial_port, serial_pin_out, array_hi[i]+48);
-         //put_string(&serial_port,serial_pin_out,sprintf(str,"%d",results[i]));
-         put_char(&serial_port,serial_pin_out,32);
+         //put_char(&serial_port, serial_pin_out, array_lo[i]+48);
+         //put_char(&serial_port, serial_pin_out, array_hi[i]+48);
+         result = array_hi[i]*255+array_lo[i];
+         base = (base_filt*result + (100 - base_filt)*base)/100;
+         dif_mean += result-base;
+
+
+         //sprintf(result_string,"%d",result-base);
+         //put_string(&serial_port,serial_pin_out,result_string);
+         //put_char(&serial_port,serial_pin_out,44);
+         //put_char(&serial_port,serial_pin_out,32);
          }
-         //_delay_ms(1000);
-      }
-      put_char(&serial_port,serial_pin_out,10);
-   }
+         dif_mean = dif_mean / (NPTS/10);
+         sprintf(result_string,"%d",dif_mean/NPTS);
+         put_string(&serial_port,serial_pin_out,result_string);
+         put_char(&serial_port,serial_pin_out,10);
+         //put_string(&serial_port,serial_pin_out,"total diff: ");
+         //sprintf(result_string,"%li",total_diff);
+         //put_string(&serial_port,serial_pin_out,result_string);
+    }
+}
