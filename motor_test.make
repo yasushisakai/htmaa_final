@@ -1,4 +1,4 @@
-PROJECT=mic
+PROJECT=motor_test
 SOURCES=$(PROJECT).c
 MMCU=attiny44
 F_CPU = 8000000
@@ -26,6 +26,3 @@ program-usbtiny: $(PROJECT).hex
 
 program-dragon: $(PROJECT).hex
 	avrdude -p t44 -P usb -c dragon_isp -U flash:w:$(PROJECT).c.hex
-
-program-ice: $(PROJECT).hex
-	avrdude -p t44 -P usb -c atmelice_isp -U flash:w:$(PROJECT).c.hex

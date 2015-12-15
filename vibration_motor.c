@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <util/delay.h>
+#include <stdio.h>
 
 
 // set the pins
@@ -36,8 +37,8 @@
 
 // pins
 // motors
-#define motor1 (1<<PB1)
-#define motor2 (1<<PB2)
+#define motor1 (1<<PB2)
+#define motor2 (1<<PB1)
 
 //serial communication
 #define mic_serial_in (1<<PA3)
@@ -178,73 +179,114 @@ void put_char(volatile unsigned char *port, unsigned char pin, char txchar){
 
 }
 
-void motor_on(unsigned char motor_pin){
-  high(motor_port,motor_pin);
+void put_string(volatile unsigned char *port,unsigned char pin, char *str){
+  put_char(&serial_port,led_serial_out,0);
+  int i=0;
+  do{
+    put_char(port,pin,str[i]);
+  }while(str[++i]!=0);
 }
 
-void motor_off(unsigned char motor_pin){
-  low(motor_port,motor_pin);
-}
+// strength range 0-100
+void run_motor(unsigned int _strength){
+  // high stops and low runs
 
-void motor_run(uint8_t strength){
-  // this will last for 10ms
+  unsigned int force;
+
+  if(_strength < 0){
+    force = 0;
+  }else if(_strength > 100){
+    force = 100;
+  }else{
+    force = _strength;
+  }
+
   uint8_t cycle;
-  uint8_t loop;
-  for(cycle = 0; cycle < PWM_cycle; ++cycle){
-    high(motor_port,motor1);
-    high(motor_port,motor2);
-    for(loop = 0;loop<strength;++loop)
-      _delay_us(10);
+  uint8_t count;
+  // 1 cycle = 5ms
+  for(cycle = 0;cycle < 10; ++cycle){
     low(motor_port,motor1);
     low(motor_port,motor2);
-    for(loop = 0;loop<(100-strength);++loop)
-      _delay_us(10);
+    for(count=0;count<force;++count)
+      _delay_us(50);
+    high(motor_port,motor1);
+    high(motor_port,motor2);
+    for(count=0;count<(100-force);++count)
+    _delay_us(50);
   }
+
 }
 
 int main(void){
-
-	// set clock
-	CLKPR = (1 << CLKPCE);
+  // setting the clock
+  CLKPR = (1 << CLKPCE);
 	CLKPR = (0 << CLKPS3) | (0 << CLKPS2) | (0 << CLKPS1) | (0 << CLKPS0);
 
-  //serial
+  char lo,hi;
+  char b1,b2,b3,b4;
+  unsigned int mic_value;
+  unsigned int motor_force;
+  char str_value[10];
+  b4 = 0;
+
+  //set motor pins
+  low(motor_port,motor1);
+  output(motor_direction,motor1);
+  low(motor_port,motor2);
+  output(motor_direction,motor2);
+
+  // set serial pins
   high(serial_port,led_serial_out);
   output(serial_direction,led_serial_out);
-  high(serial_port,mic_serial_out);
-  output(serial_direction,mic_serial_out);
   high(serial_port,mic_serial_in);
   input(serial_direction,mic_serial_in);
 
-	//set motors for output
-	low(motor_port,motor1);
-	output(motor_direction,motor1);
-	low(motor_port,motor2);
-	output(motor_direction,motor2);
-
-  put_char(&serial_port,led_serial_out,'0');
-
-  uint8_t loop;
-  char chr;
   while(1){
 
-    motor_on(motor1);
-    motor_on(motor2);
-    get_char(&serial_pins,mic_serial_in,&chr);
-    //put_char(&serial_port,led_serial_out,chr);
-    uint8_t strength = (uint8_t)(chr-'0');
-    for(loop = 0;loop < 10;++loop){
-      motor_run(strength*10);
-      if(chr > '0'-1 && chr < '0'+2){
-        put_char(&serial_port,led_serial_out,'1');
-      }else if(chr > '0'+1 && chr < '0'+5){
-        put_char(&serial_port,led_serial_out,'2');
-      }else if(chr > '0'+4 && chr <'0'+8){
-        put_char(&serial_port,led_serial_out,'3');
-      }else{
-        put_char(&serial_port,led_serial_out,'0');
+
+      // wait for frame
+      while(1){
+      b1 = b2;
+      b2 = b3;
+      b3 = b4;
+
+      get_char(&serial_pins,mic_serial_in,&b4);
+
+      if(b1==1 && b2==2 && b3==3 && b4==4){
+        //put_char(&serial_port,led_serial_out,'B');
+        break;
       }
     }
-    //put_char(&serial_port,led_serial_out,10);//new line
+      get_char(&serial_pins,mic_serial_in,&lo);
+      get_char(&serial_pins,mic_serial_in,&hi);
+
+      // for debugging
+      mic_value = hi * 256 + lo;
+      //sprintf(str_value,"%d",mic_value);
+      //put_string(&serial_port,led_serial_out,str_value);
+
+      if(mic_value < 10){
+        put_char(&serial_port,led_serial_out,'0');
+      }else if (mic_value < 50){
+        put_char(&serial_port,led_serial_out,'2');
+      }else if (mic_value < 200){
+        put_char(&serial_port,led_serial_out,'3');
+      }else{
+        put_char(&serial_port,led_serial_out,'1');
+      }
+
+      if(mic_value<10){
+        motor_force = 0;
+      }else if(mic_value>650){
+        motor_force = 100;
+      }else{
+        motor_force = ((mic_value-10)*70)/(650-10)+30;
+      }
+
+      run_motor(motor_force); // 50ms;
+
+
+      //put_char(&serial_port,led_serial_out,lo);
+      //put_char(&serial_port,led_serial_out,hi);
   }
 }
