@@ -275,12 +275,18 @@ int main(void){
         put_char(&serial_port,led_serial_out,'1');
       }
 
+      //if(mic_value<10){
+      //  motor_force = 0;
+      //}else if(mic_value>650){
+      //  motor_force = 100;
+      //}else{
+      //  motor_force = ((mic_value-10)*70)/(650-10)+30;
+      //}
+
       if(mic_value<10){
         motor_force = 0;
-      }else if(mic_value>650){
-        motor_force = 100;
       }else{
-        motor_force = ((mic_value-10)*70)/(650-10)+30;
+        motor_force = 100;
       }
 
       run_motor(motor_force); // 50ms;
